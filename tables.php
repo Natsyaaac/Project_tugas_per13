@@ -1,7 +1,7 @@
 <?php
 $host = "localhost";
 $user = "root";
-$pass = ""; // Kosongkan jika tidak ada password
+$pass = "";
 $db = "database_bigdata_kampus";
 $conn = new mysqli($host, $user, $pass, $db);
 
@@ -9,12 +9,44 @@ if ($conn->connect_error) {
     die("Koneksi gagal: " . $conn->connect_error);
 }
 
-$sql = "SELECT id, nama_mhs, jenis_klm, usia_mhs, tanggal_lhr FROM mahasiswa limit 100";
+if ($_SERVER["REQUEST_METHOD"] == "POST") {
+    // Ambil data dari form
+    $nama = $_POST['nama_mhs'];
+    $nim  = $_POST['nim_mhs'];
+    $jk   = $_POST['jenis_klm'];
+    $usia = $_POST['usia_mhs'];
+    $tgl  = $_POST['tanggal_lhr'];
+    $id_detail = 1;
+
+    // ✅ Gunakan Prepared Statement tanpa kolom `id` (karena AUTO_INCREMENT)
+    $stmt = $conn->prepare("INSERT INTO mahasiswa (nama_mhs, nim_mhs, jenis_klm, usia_mhs, tanggal_lhr, id_detail)
+                            VALUES (?, ?, ?, ?, ?, ?)");
+    $stmt->bind_param("sssisi", $nama, $nim, $jk, $usia, $tgl, $id_detail);
+
+    if ($stmt->execute()) {
+        // ✅ Redirect otomatis agar halaman refresh dan data terbaru tampil langsung
+        echo "<script>
+                alert('Data berhasil disimpan!');
+                window.location.href = 'tables.php';
+              </script>";
+        exit;
+    } else {
+        echo "<script>
+                alert('Gagal menyimpan data: " . $stmt->error . "');
+              </script>";
+    }
+
+    $stmt->close();
+}
+
+// ✅ Tampilkan data mahasiswa dari yang terbaru ke lama
+$sql = "SELECT id, nama_mhs, jenis_klm, usia_mhs, tanggal_lhr FROM mahasiswa ORDER BY id DESC";
 $result = $conn->query($sql);
 ?>
 
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="utf-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
@@ -27,6 +59,7 @@ $result = $conn->query($sql);
     <link href="css/styles.css" rel="stylesheet" />
     <script src="https://use.fontawesome.com/releases/v6.3.0/js/all.js" crossorigin="anonymous"></script>
 </head>
+
 <body class="sb-nav-fixed">
     <nav class="sb-topnav navbar navbar-expand navbar-dark bg-dark">
         <!-- Navbar Brand-->
@@ -49,7 +82,9 @@ $result = $conn->query($sql);
                 <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
                     <li><a class="dropdown-item" href="#!">Settings</a></li>
                     <li><a class="dropdown-item" href="#!">Activity Log</a></li>
-                    <li><hr class="dropdown-divider" /></li>
+                    <li>
+                        <hr class="dropdown-divider" />
+                    </li>
                     <li><a class="dropdown-item" href="#!">Logout</a></li>
                 </ul>
             </li>
@@ -108,7 +143,7 @@ $result = $conn->query($sql);
                                     </nav>
                                 </div>
                                 <a class="nav-link collapsed" href="about.php">
-                                     About
+                                    About
                                 </a>
                                 <!-- <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#pagesCollapseError" aria-expanded="false" aria-controls="pagesCollapseError">
                                     Error
@@ -159,7 +194,7 @@ $result = $conn->query($sql);
                             <i class="fas fa-table me-1"></i>
                             DataTable Example
                         </div>
-                        <?php if ($result && $result->num_rows > 0):?>
+                        <?php if ($result && $result->num_rows > 0): ?>
                             <div class="card-body">
                                 <table id="tabelMahasiswa_table" class="table table-bordered table-hover">
                                     <thead class="table-light">
@@ -173,21 +208,133 @@ $result = $conn->query($sql);
                                     </thead>
                                     <tbody>
                                         <?php while ($row = $result->fetch_assoc()): ?>
-                                        <tr>
-                                            <td><?= htmlspecialchars($row['id']) ?></td>
-                                            <td><?= htmlspecialchars($row['nama_mhs']) ?></td>
-                                            <td><?= htmlspecialchars($row['jenis_klm']) ?></td>
-                                            <td><?= htmlspecialchars($row['usia_mhs']) ?></td>
-                                            <td><?= htmlspecialchars($row['tanggal_lhr']) ?></td>
-                                        </tr>
+                                            <tr>
+                                                <td><?= htmlspecialchars($row['id']) ?></td>
+                                                <td><?= htmlspecialchars($row['nama_mhs']) ?></td>
+                                                <td><?= htmlspecialchars($row['jenis_klm']) ?></td>
+                                                <td><?= htmlspecialchars($row['usia_mhs']) ?></td>
+                                                <td><?= htmlspecialchars($row['tanggal_lhr']) ?></td>
+                                            </tr>
                                         <?php endwhile; ?>
                                     </tbody>
                                 </table>
-                                <?php else: ?>
-                                     <p>Data mahasiswa tidak ditemukan.</p>
-                                <?php endif; ?>
-                         </div>
+                            <?php else: ?>
+                                <p>Data mahasiswa tidak ditemukan.</p>
+                            <?php endif; ?>
+                            </div>
                     </div>
+
+                    <div class="card mb-4 shadow-sm">
+                        <div class="card-header bg-primary text-white">
+                            <i class="fas fa-user-plus me-2"></i>
+                            <strong>Form Tambah Data Mahasiswa Baru</strong>
+                        </div>
+                        <div class="card-body">
+                            <form id="formMahasiswa" class="needs-validation" novalidate method="POST" novalidate>
+                                <div class="row g-3">
+                                    <!-- <div class="col-md-12">
+                                        <label for="id_mhs" class="form-label">
+                                            <i class="fas fa-hashtag me-1"></i>ID Mahasiswa
+                                            <span class="text-danger">*</span>
+                                        </label>
+                                        <div class="input-group">
+                                            <span class="input-group-text bg-primary text-white">
+                                                <i class="fas fa-key"></i>
+                                            </span>
+                                            <input type="number" class="form-control" id="id_mhs" name="id_mhs" placeholder="Masukkan ID (Auto increment)" required>
+                                            <div class="invalid-feedback">
+                                                ID mahasiswa wajib diisi.
+                                            </div>
+                                        </div>
+                                        <small class="form-text text-muted">
+                                            <i class="fas fa-info-circle me-1"></i>ID unik untuk identifikasi mahasiswa
+                                        </small>
+                                    </div> -->
+
+                                    <div class="col-md-6">
+                                        <label for="nama_mhs" class="form-label">
+                                            <i class="fas fa-user me-1"></i>Nama Lengkap Mahasiswa
+                                            <span class="text-danger">*</span>
+                                        </label>
+                                        <input type="text" class="form-control" id="nama_mhs" name="nama_mhs" placeholder="Masukkan nama lengkap" required>
+                                        <div class="invalid-feedback">
+                                            Nama mahasiswa wajib diisi.
+                                        </div>
+                                    </div>
+
+                                    <div class="col-md-6">
+                                        <label for="nim_mhs" class="form-label">
+                                            <i class="fas fa-id-card me-1"></i>NIM (Nomor Induk Mahasiswa)
+                                            <span class="text-danger">*</span>
+                                        </label>
+                                        <input type="text" class="form-control" id="nim_mhs" name="nim_mhs" placeholder="Contoh: 210001" required>
+                                        <div class="invalid-feedback">
+                                            NIM mahasiswa wajib diisi.
+                                        </div>
+                                    </div>
+
+                                    <div class="col-md-4">
+                                        <label for="jenis_klm" class="form-label">
+                                            <i class="fas fa-venus-mars me-1"></i>Jenis Kelamin
+                                            <span class="text-danger">*</span>
+                                        </label>
+                                        <select class="form-select" id="jenis_klm" name="jenis_klm" required>
+                                            <option value="" selected disabled>Pilih jenis kelamin</option>
+                                            <option value="Laki-laki">Laki-laki</option>
+                                            <option value="Perempuan">Perempuan</option>
+                                        </select>
+                                        <div class="invalid-feedback">
+                                            Pilih jenis kelamin.
+                                        </div>
+                                    </div>
+
+                                    <div class="col-md-4">
+                                        <label for="usia_mhs" class="form-label">
+                                            <i class="fas fa-calendar-alt me-1"></i>Usia
+                                            <span class="text-danger">*</span>
+                                        </label>
+                                        <input type="number" class="form-control" id="usia_mhs" name="usia_mhs" min="17" max="50" placeholder="Masukkan usia" required>
+                                        <div class="invalid-feedback">
+                                            Usia mahasiswa wajib diisi (17-50 tahun).
+                                        </div>
+                                    </div>
+
+                                    <div class="col-md-4">
+                                        <label for="tanggal_lhr" class="form-label">
+                                            <i class="fas fa-birthday-cake me-1"></i>Tanggal Lahir
+                                            <span class="text-danger">*</span>
+                                        </label>
+                                        <input type="date" class="form-control" id="tanggal_lhr" name="tanggal_lhr" required>
+                                        <div class="invalid-feedback">
+                                            Tanggal lahir wajib diisi.
+                                        </div>
+                                    </div>
+
+                                    <div class="col-12">
+                                        <div class="alert alert-info d-flex align-items-center" role="alert">
+                                            <i class="fas fa-info-circle me-2"></i>
+                                            <div>
+                                                <small>Pastikan semua data yang diisi sudah benar sebelum menyimpan. Field yang ditandai dengan <span class="text-danger">*</span> wajib diisi.</small>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-12">
+                                        <hr class="my-3">
+                                        <div class="d-flex justify-content-end gap-2">
+                                            <button type="reset" class="btn btn-secondary">
+                                                <i class="fas fa-undo me-1"></i>Reset Form
+                                            </button>
+                                            <button type="submit" class="btn btn-primary">
+                                                <i class="fas fa-save me-1"></i>Simpan Data Mahasiswa
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
                 </div>
             </main>
             <footer class="py-4 bg-light mt-auto">
@@ -204,7 +351,7 @@ $result = $conn->query($sql);
             </footer>
         </div>
     </div>
-       <!-- jQuery dan DataTables -->
+    <!-- jQuery dan DataTables -->
     <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
 
@@ -218,14 +365,29 @@ $result = $conn->query($sql);
 
     <!-- Inisialisasi DataTables -->
     <script>
-      $(document).ready(function() {
-        $('#tabelMahasiswa_table').DataTable({
-          pageLength: 10,
-          lengthMenu: [5, 10, 25, 50]
+        $(document).ready(function() {
+            $('#tabelMahasiswa_table').DataTable({
+                pageLength: 10,
+                lengthMenu: [5, 10, 25, 50]
+            });
         });
-      });
+
+
+        (() => {
+            'use strict'
+            const forms = document.querySelectorAll('.needs-validation')
+            Array.from(forms).forEach(form => {
+                form.addEventListener('submit', event => {
+                    if (!form.checkValidity()) {
+                        event.preventDefault()
+                        event.stopPropagation()
+                    }
+                    form.classList.add('was-validated')
+                }, false)
+            })
+        })()
     </script>
 </body>
+
 </html>
 <?php $conn->close(); ?>
-

@@ -145,7 +145,7 @@ if ($conn->connect_error) {
                 <?php
                     $sql_akuntansi = "SELECT nim_mhs, nama_mhs, jenis_klm, usia_mhs, nama_kelas
                         FROM view_mahasiswa_lengkap
-                        WHERE nama_jurusan = 'Akuntansi' AND jenis_klm = 'Laki-laki'";
+                        WHERE nama_jurusan = 'Akuntansi' AND jenis_klm = 'Laki-laki' Limit 100" ;
                     $result_akuntansi = $conn->query($sql_akuntansi);
                 ?>
                 <div class="container-fluid px-4">
